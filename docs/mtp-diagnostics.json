@@ -1,0 +1,130 @@
+{
+  "schema": "fuzev-mtp-aggregates-v2",
+  "date": "2026-10-12",
+  "tested_platform": "NVIDIA GB10, ARM64, Python 3.12, PyTorch 2.13.0+cu130",
+  "backbone": "nvidia/Qwen3.8-Flash-Next-NVFP4",
+  "revision": "fc694b54fb0174e0913e6adf86691ef85a4ead47",
+  "recorded_settings": {
+    "model_runner": "V1",
+    "mtp_tokens": 3,
+    "kv_dtype": "fp8_e4m3",
+    "cuda_graphs": "piecewise",
+    "embedding_storage": "memory-mapped",
+    "context_tokens": 262144,
+    "max_sequences": 4
+  },
+  "head_loaded": false,
+  "decision_requests": 0,
+  "sampling": {
+    "temperature": 1,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 37
+  },
+  "completion_checks": [
+    {
+      "requested_completion_tokens": 256,
+      "actual_completion_tokens": 256,
+      "finish_reasons": [
+        "length"
+      ],
+      "wall_seconds": 13.141075493069366,
+      "speculative_decoding": {
+        "mean_acceptance_length": 2.909090909090909,
+        "draft_acceptance_rate": 0.6363636363636364,
+        "acceptance_histogram": [
+          18,
+          13,
+          16,
+          41
+        ],
+        "num_spec_steps": 88,
+        "num_accepted_draft_tokens": 168,
+        "num_draft_tokens": 264,
+        "num_spec_tokens": 3,
+        "per_step_accepted": null,
+        "per_step_drafted": null
+      }
+    },
+    {
+      "requested_completion_tokens": 512,
+      "actual_completion_tokens": 512,
+      "finish_reasons": [
+        "length"
+      ],
+      "wall_seconds": 16.126936023007147,
+      "speculative_decoding": {
+        "mean_acceptance_length": 3.3594771241830066,
+        "draft_acceptance_rate": 0.7864923747276689,
+        "acceptance_histogram": [
+          18,
+          13,
+          18,
+          104
+        ],
+        "num_spec_steps": 153,
+        "num_accepted_draft_tokens": 361,
+        "num_draft_tokens": 459,
+        "num_spec_tokens": 3,
+        "per_step_accepted": null,
+        "per_step_drafted": null
+      }
+    }
+  ],
+  "long_prefill_checks": [
+    {
+      "requested_prompt_tokens": 8192,
+      "actual_prompt_tokens": 8192,
+      "requested_completion_tokens": 512,
+      "actual_completion_tokens": 512,
+      "wall_seconds": 22.228102434892207,
+      "speculative_decoding": {
+        "mean_acceptance_length": 3.5694444444444446,
+        "draft_acceptance_rate": 0.8564814814814815,
+        "acceptance_histogram": [
+          10,
+          8,
+          16,
+          110
+        ],
+        "num_spec_steps": 144,
+        "num_accepted_draft_tokens": 370,
+        "num_draft_tokens": 432,
+        "num_spec_tokens": 3,
+        "per_step_accepted": null,
+        "per_step_drafted": null
+      }
+    },
+    {
+      "requested_prompt_tokens": 32768,
+      "actual_prompt_tokens": 32768,
+      "requested_completion_tokens": 512,
+      "actual_completion_tokens": 512,
+      "wall_seconds": 29.246426556957886,
+      "speculative_decoding": {
+        "mean_acceptance_length": 3.0783132530120483,
+        "draft_acceptance_rate": 0.6927710843373494,
+        "acceptance_histogram": [
+          27,
+          21,
+          30,
+          88
+        ],
+        "num_spec_steps": 166,
+        "num_accepted_draft_tokens": 345,
+        "num_draft_tokens": 498,
+        "num_spec_tokens": 3,
+        "per_step_accepted": null,
+        "per_step_drafted": null
+      }
+    }
+  ],
+  "lifecycle": {
+    "status": "passed",
+    "exit_code": 0,
+    "oom_killed": false,
+    "fatal_engine_error": false
+  },
+  "output_review": "Recorded outputs contain coherent reasoning and Python; long-input probes preserve the requested blue/red/4 content. Output budgets limit completion.",
+  "head_coexistence_results": "integration-timing-samples.json"
+}

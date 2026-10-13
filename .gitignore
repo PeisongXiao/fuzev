@@ -1,0 +1,12 @@
+__pycache__/
+.env
+.env.*
+*.safetensors
+*.gguf
+*.pt
+*.pth
+*.bin
+*.onnx
+*.so
+*.whl
+*.log
