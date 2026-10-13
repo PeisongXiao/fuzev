@@ -8,12 +8,17 @@ state and label logits alongside normal generation.
 
 ## Key Highlights
 
-- **No fine-tuning.** The [backbone](#head-and-backbones) stays frozen. A
-  2.9M-parameter head reads its final hidden state and label logits to make
-  decisions.
 - **Load once, generate and decide.** Text generation and
   [decisions](docs/api.md) share one copy of the weights, one KV cache and one
   scheduler.
+- **No fine-tuning.** The [backbone](#head-and-backbones) stays frozen. A
+  2.9M-parameter head reads its final hidden state and label logits to make
+  decisions.
+- **256K context, image input and shared prefixes.** Every tested setup runs
+  the backbone's full [262,144-token context](docs/models.md#recorded-benchmark-settings).
+  Requests can carry [images](docs/api.md#images) (experimental), and decisions
+  can pick up a generated conversation through its
+  [retained prefix](docs/api.md#retained-prefixes), reusing the engine's prefix cache.
 - **One head across quantizations and engines.** The same head file runs on
   [vLLM and ExLlamaV3](#use), tested on
   [five quantizations in six engine setups](#six-configurations-5075-requests).
