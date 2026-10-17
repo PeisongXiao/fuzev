@@ -2,9 +2,8 @@
 
 `POST /v1/systemone` answers Choice, Boolean (Noul) and ordered Score questions
 in the public Jev `state`, `questions` and `answers` format. The
-[vLLM](https://github.com/PeisongXiao/fuzev-vllm-plugin) and
-[ExLlamaV3](https://github.com/PeisongXiao/fuzev-exllamav3-plugin) integrations
-serve decisions and generation from the same running model.
+[ExLlamaV3](https://github.com/PeisongXiao/fuzev-exllamav3-plugin/tree/v1.1)
+integration serves decisions and generation from the same running model.
 
 ## Usage
 
@@ -89,7 +88,7 @@ Illustrative response, with example probabilities and token counts:
 | --- | --- |
 | `model` | Serving model name (`--model-name`); `my-model` matches the [server setup](install.md#start-a-server) |
 | `answers` | Answers keyed by submitted question key |
-| `usage.input_tokens` | Logically submitted decision tokens, including prefixes repeated across option branches |
+| `usage.input_tokens` | Encoded request length in model tokens: the shared state once, plus each question's prompt and options |
 | `usage.output_tokens` | Serialized answer length in model tokens |
 | `latency_ms` | Request duration in milliseconds (FuZev extension) |
 
@@ -128,8 +127,12 @@ Scoring uses the server's calibration mode (see [model configuration](models.md)
 
 | Mode | Applies | Used by |
 | --- | --- | --- |
-| `raw` | Temperature 1 | FuZev servers (default) and the published benchmarks |
-| `calibrated` | The head bundle's temperatures | Kev by default; FuZev servers started with `--calibration calibrated` |
+| `raw` | Temperature 1 | FuZev servers (default) and the published head 1.0.0 benchmarks |
+| `calibrated` | The head bundle's temperatures | Kev by default; FuZev servers started with `--calibration calibrated`; the published FuZev v1.1 benchmarks |
+
+The published head declares a temperature per question type, modality and
+option-count range. In calibrated mode, a request outside these ranges uses
+raw probabilities, and `/v1/decisions` reports `calibration_id: "raw"` for it.
 
 Confidence formulas:
 
@@ -140,7 +143,7 @@ Confidence formulas:
 
 ## Errors
 
-Both integrations use these statuses:
+The server uses these statuses:
 
 | Status | Meaning |
 | --- | --- |
@@ -153,7 +156,7 @@ Both integrations use these statuses:
 | 500 | Unexpected server error |
 | 503 | Server shutting down or engine unavailable |
 
-Validation errors return a `detail` list. For a 17-option Choice on the
+Validation errors return a `detail` list. For a 256-option Choice on the
 published head, it names the affected field:
 
 ```json
@@ -161,7 +164,7 @@ published head, it names the affected field:
   "detail": [
     {
       "loc": ["body", "questions", "team", "choice", "criteria"],
-      "msg": "This head supports at most 16 options",
+      "msg": "This head supports at most 255 options",
       "type": "value_error"
     }
   ]
@@ -172,8 +175,9 @@ A missing or evicted prefix instead returns 404 with an OpenAI-style
 `{"error": {"type": "invalid_request_error", "message": "Unknown or evicted prefix"}}`
 envelope.
 
-Independent questions queue through the engine's scheduler. If a question fails
-or the request is cancelled, the server cancels the request's remaining work.
+Independent questions run concurrently through the engine's scheduler. If a
+question fails or the request is cancelled, the server cancels the request's
+remaining work.
 
 ## Extensions
 
@@ -183,7 +187,7 @@ FuZev adds these behaviors beyond the public Jev contract.
 | --- | --- | --- |
 | `latency_ms` | Number in every SystemOne response | Elapsed request time in milliseconds |
 | `X-TypeSafe-Request-ID` | Optional request header; echoed response header | Set it before submitting to enable cancellation. Characters: `[A-Za-z0-9._:-]+`. An active duplicate returns 409. If omitted, the server assigns one. |
-| `POST /v1/requests/{id}/cancel` | Optional; takes a request ID | Returns 202 with `{"id": "...", "cancel_requested": true}`. Cancels all pending work and waits for it to drain; the original request then ends with 499. A started stream ends with an error event and `data: [DONE]`. Repeats return 202 during cleanup, then 404. |
+| `POST /v1/requests/{id}/cancel` | Optional; takes a request ID | Returns 202 at once with `{"id": "...", "cancel_requested": true}`. Cancels all pending work; the original request waits for it to drain, then ends with 499. A started stream ends with an error event and `data: [DONE]`. Repeats return 202 during cleanup, then 404. |
 | `DELETE /v1/prefixes/{id}` | Optional; takes a prefix ID | Releases a retained prefix; returns `{"id": "...", "released": true}` |
 | `retain_decision_prefix` | Optional boolean on generation requests, default `false` | When true, the generation response includes a string `prefix_id` for its accepted prompt and completion tokens |
 | `prefix_id` | Optional string on SystemOne and decisions requests | Uses retained generation tokens as context: SystemOne appends the rendered `state`; `/v1/decisions` appends `additional_context`. Release the prefix when done. |
@@ -191,11 +195,11 @@ FuZev adds these behaviors beyond the public Jev contract.
 | `/v1/decisions` | Optional lower-level endpoint | Takes explicit candidate text; returns per-candidate scores ([fields](#lower-level-decisions)) |
 | `model` on SystemOne | Optional non-empty string | Accepted and ignored; responses name the configured serving model |
 | Unknown SystemOne fields | Extra top-level or per-question fields | Accepted and ignored; known fields keep type and value validation |
-| Score levels 11-16 | Extra levels in the criteria array | The published head supports them; hosted Jev documents up to 10 |
+| Score levels 11-255 | Extra levels in the criteria array | The published head supports them (up to 26 with an image); hosted Jev documents up to 10 |
 
 ### Retained Prefixes
 
-- Both engines retain up to 128 prefixes by default; set the count with
+- The server retains up to 128 prefixes by default; set the count with
   `--prefix-capacity`.
 - Entries have no time-based expiry. Retaining past capacity evicts the least
   recently used entry; each access refreshes an entry's LRU position.
@@ -242,7 +246,7 @@ with TypeSafeClient(
 | `question` | Instruction text; may be empty |
 | `candidates` | Ordered array of unique `id` and `text` pairs; array order defines the ordinal levels |
 | `messages` or `prefix_id` | Supply standalone messages or a retained prefix |
-| `additional_context` | Optional text appended after the retained prefix |
+| `additional_context` | Optional text appended after the messages or retained prefix |
 | `head_id` | Optional string, accepted and ignored; responses report the loaded head's `head_id` |
 | `image` | Optional experimental image input, as in [Images](#images) |
 
@@ -258,18 +262,17 @@ optionally followed by its criteria description.
 | `calibration_id` | `raw` or `calibrated` |
 | `selected_id` | Candidate ID with the highest probability |
 | `scores` | Ordered records of `id`, `logit`, `raw_probability` and `calibrated_probability`; in raw mode both probability fields hold the raw probability |
+| `execution.input_tokens` | Encoded decision length in model tokens: context, question and each option once |
 | `execution.submitted_tokens` | Logically submitted decision tokens |
+| `execution.cached_tokens`, `forwarded_tokens` | Decision tokens reused from the cache and tokens the model processed |
+| `execution.completed_root_branches` | Options read from the shared context pass; 0 when each option runs as its own job ([decision cost](#limitations)) |
 
 ### Generation And Discovery
 
 `POST /v1/chat/completions` and `POST /v1/completions` return OpenAI-style
 responses. Chat answers appear in `message.content` and model thinking in
-`message.reasoning`:
-
-- vLLM splits them with the reasoning parser named by `--reasoning-parser`
-  (default `qwen3`; see the
-  [plugin configuration](https://github.com/PeisongXiao/fuzev-vllm-plugin/blob/main/README.md#configuration)).
-- ExLlamaV3 splits at Qwen-style `<think>` and `</think>` tags.
+`message.reasoning`. The server splits them at Qwen-style `<think>` and
+`</think>` tags.
 
 Set `chat_template_kwargs.enable_thinking` to control thinking in the model's
 chat template. Example chat request body:
@@ -306,11 +309,11 @@ Disconnecting cancels the engine request.
 | Request Field | Behavior |
 | --- | --- |
 | `model` | Optional non-empty alias; responses report the configured serving model |
-| `messages` / `prompt` | Supply one: chat messages or a text-completion prompt |
+| `messages` / `prompt` | `messages` for `/v1/chat/completions`, `prompt` for `/v1/completions`; the other field returns 422 |
 | `messages[].role`, `content` | Content: a string, or an array of `text` parts (joined) and at most one `image_url` part. Role `developer` becomes `system` |
-| `max_tokens` / `max_completion_tokens` | Optional positive output budget; `max_completion_tokens` takes precedence. Default: the remaining context; vLLM first applies a model default budget, capped at the remaining context |
+| `max_tokens` / `max_completion_tokens` | Optional positive output budget; `max_completion_tokens` takes precedence. Default: the remaining context |
 | `temperature`, `top_p`, `seed` | Optional sampling (`temperature` 0 to 2, `top_p` above 0 up to 1). Omitted values use the model's `generation_config.json`, else engine defaults |
-| `stop` | String or array of up to four stop strings; null means none |
+| `stop` | String or array of up to four stop strings, the OpenAI API limit; null means none |
 | `stream` | Boolean, default false; true selects SSE |
 | `top_k` | FuZev extension: optional top-k sampling; 0 disables it |
 | `chat_template_kwargs` | FuZev extension: overrides startup template settings for messages; ignored for raw `prompt` requests |
@@ -330,10 +333,9 @@ Disconnecting cancels the engine request.
 | `choices[].message.content` / `choices[].text` | Chat answer or text completion |
 | `choices[].message.reasoning` | FuZev extension: model thinking, separated from answer text |
 | `usage.prompt_tokens`, `completion_tokens`, `total_tokens` | Token accounting |
-| `usage.prompt_tokens_details.cached_tokens` | vLLM-only extension: engine-reported cached input tokens |
 | `prefix_id` | FuZev extension: retained prefix ID; in streaming, supplied on the final chunk |
 
-Use the model name from `GET /v1/models`. Both integrations return
+Use the model name from `GET /v1/models`. The server returns
 `{"object": "list", "data": [...], "models": [...]}`:
 
 - `data` is the OpenAI model list.
@@ -342,51 +344,42 @@ Use the model name from `GET /v1/models`. Both integrations return
   empty and the SystemOne route is unavailable.
 
 `GET /health` returns `status`, `model`, `context_window` and `capabilities`
-(keys `generation`, `decisions`, `images` and `streaming`) on both engines. The
+(keys `generation`, `decisions`, `images` and `streaming`). The
 health check is unauthenticated; `--api-key` protects `/v1/` routes.
 
 ## Capacity Comparison
 
 | API | Choice Options | Score Levels | Noul Outcomes |
 | --- | --- | --- | --- |
-| FuZev | 2 to the head's `max_options` (16 for the published head) | 2 to the head's `max_options` (16 for the published head) | 2 |
+| FuZev | 2 to the head's maximum (255 for the published head, 26 with an image) | 2 to the head's maximum (255 for the published head, 26 with an image) | 2 |
 | [Hosted Jev](https://docs.typesafe.ai/api) | Up to 255 | Up to 10 | 2 |
-| [Kev](https://github.com/jaredpalmer/kev#api) | 1-255 | 1-255 descriptions | 2 |
+| [Kev](https://github.com/jaredpalmer/kev/blob/kev-1.0/README.md#api) | 1-255 | 1-255 descriptions | 2 |
 
 ## Limitations
 
-FuZev v1.0 is an experimental research release.
+FuZev v1.1 is an experimental research release.
 
-- **Option counts.** v1.0 accepts 2 to 16 Choice options or Score levels per
-  question. The head bundle declares the maximum (`max_options` in its
-  `config.json`): 16 for the published head. Larger counts are planned for
-  v1.1. Noul has exactly two outcomes. Hosted Jev and Kev allow different
+- **Option counts.** v1.1 accepts 2 to 255 Choice options or Score levels per
+  question, or 2 to 26 with an image. The head bundle declares each maximum
+  (`implemented_max` per question type and modality in its `config.json`).
+  Text Score quality has no validated maximum in the bundle. Noul has exactly
+  two outcomes. Hosted Jev and Kev allow different
   counts; see the [capacity comparison](api.md#capacity-comparison).
-- **Tested platform.** NVIDIA GB10 (Python 3.12, PyTorch 2.13.0+cu130). Both
-  engines need CUDA; the head runs on CPU or GPU (`--head-device`).
-- **vLLM.** Readout supports the V1 GPU model runner
-  (`VLLM_USE_V2_MODEL_RUNNER=0`), synchronous scheduling
-  (`"async_scheduling": false` in `engine.json`) and pipeline-parallel size 1.
-  Configuration accepts KV and encoder-cache transfer connectors; live readout
-  with them is unverified. MTP with EXL3 checkpoints is unsupported in v1.0.
-  See the
-  [engine limitations](https://github.com/PeisongXiao/vllm-fuzev/blob/main/docs/design/fuzev.md#limitations).
+- **Tested platform.** NVIDIA GB10 (Python 3.12, PyTorch 2.13.0+cu130).
+  ExLlamaV3 needs CUDA; the head runs on CPU or GPU (`--head-device`).
 - **ExLlamaV3 readout.** Supports Generators without tensor parallelism.
   Multi-GPU layer splits are untested.
-- **Speculative decoding.** With MTP or another speculative method that keeps a
-  draft KV cache, vLLM decisions recompute the full context per option: about
-  `K+1` full context prefills for `K` options. Serve decision-heavy workloads
-  without speculative decoding.
 - **Decision cost.** A `K`-option decision runs one pass over the context plus
-  one pass per option. Each option pass reuses cached context up to the
-  engine's cache block: 1,568 tokens on vLLM with BF16 KV for Qwen3.8, and 256
-  tokens on ExLlamaV3. For contexts shorter than one block, a decision costs
-  about `K+1` times a plain prefill of that context.
-- **Repeatability.** Decision probabilities vary between repeated requests on
-  vLLM. On ExLlamaV3 they can differ slightly between a request's first run and
-  later repeats (once its prefix pages are cached) and between server starts.
-  The cause: Triton selects kernel configurations by timing when it first
-  compiles them. See the [repeat probes](benchmarks.md#repeat-probes).
+  one pass per option over that option's own text, up to `--max-batch-size`
+  options at a time. When the engine cannot share the context pass (cache or
+  context limit, an image at the end of the question, or the recurrent
+  checkpoint budget), each option runs as its own job over the context's
+  cached pages.
+- **Repeatability.** Decision probabilities can differ between a request's
+  first run and later repeats (once its prefix pages are cached) and between
+  server starts. Questions decided concurrently can also differ from the same
+  questions decided one at a time, since their options share batched forwards.
+  See the [repeat probes](benchmarks.md#repeat-probes).
 - **Listener and request size.** The listener defaults to `127.0.0.1:8000` with
   no key; change it with `--host`, `--port` and `--api-key`. Request bodies
   default to 8 MiB (`--max-request-bytes`); base64 images count toward this
@@ -396,12 +389,11 @@ FuZev v1.0 is an experimental research release.
     with an image use the served model's own image placeholder.
   - ExLlamaV3 needs `--vision` or the `image_embeddings` callback of
     `build_generator_service`.
-  - Weak visual tasks include MM-RLHF appropriateness and relative preference, and
-    VL-RewardBench Choice and relative-preference Noul; see
-    [benchmarks](benchmarks.md).
-  - The published builds' image path has CPU test coverage only. The image
-    results in [benchmarks](benchmarks.md) come from the research evaluation
-    servers.
+  - Measured image results, including tracks where the head scores below the
+    frozen-LM label control, are in
+    [benchmarks](benchmarks.md#experimental-image-decisions).
+  - The published head is validated for image Choice with 2 options; image
+    Noul, image Score and larger image option sets are unvalidated.
 
 Research methods and measured scope are in the
-[archive](https://github.com/PeisongXiao/fuzev-research-archive).
+[archive](https://github.com/PeisongXiao/fuzev-research-archive/tree/v1.1).

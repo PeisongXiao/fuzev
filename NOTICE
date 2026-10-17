@@ -2,9 +2,10 @@
 
 Copyright 2026 Peisong Xiao
 
-`fuzev`, `fuzev-runtime`, both decision plugins, `vllm-fuzev` and the
-learned head weights use Apache-2.0. `exllamav3-fuzev` uses MIT; the optional
-`vllm-exl3-plugin` uses AGPL-3.0-only. Backbone weights and source
+`fuzev`, `fuzev-runtime`, `fuzev-exllamav3-plugin` and the learned head
+weights use Apache-2.0. `exllamav3-fuzev` uses MIT: ExLlamaV3 Copyright
+(c) 2025 Turboderp; FuZev changes Copyright (c) 2026 Peisong Xiao.
+Backbone weights and source
 datasets retain their own terms. The head package distributes learned tensors,
 configuration and calibration; it contains no backbone weights or dataset contents.
 
@@ -33,8 +34,16 @@ configuration and calibration; it contains no backbone weights or dataset conten
 | --- | --- | --- |
 | [HelpSteer2](https://huggingface.co/datasets/nvidia/HelpSteer2/tree/990b2711a36180dd19d9c94b8627844866f8982a) | NVIDIA and contributors | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | [HelpSteer3](https://huggingface.co/datasets/nvidia/HelpSteer3/tree/f6d145777bcbde96137596340fab89793acd1031) | NVIDIA and contributors | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| [MM-RLHF](https://huggingface.co/datasets/yifanzhang114/MM-RLHF/tree/29cfeea5929979d12b42a8f30201e03c188408a6) | Yifan Zhang and contributors | [MIT](https://opensource.org/license/mit), as declared in the dataset card |
+| [MM-RLHF](https://huggingface.co/datasets/yifanzhang114/MM-RLHF/tree/29cfeea5929979d12b42a8f30201e03c188408a6) | Yifan Zhang and contributors | [MIT](https://opensource.org/license/mit), as declared in the dataset card; reaches head 1.1.0 through the 1.0 head it starts from; also used for evaluation |
 | [BoolQ](https://huggingface.co/datasets/google/boolq/tree/35b264d03638db9f4ce671b711558bf7ff0f80d5) | Clark et al., Google Research | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) |
+| [WANDS](https://github.com/wayfair/WANDS) | Chen, Liu, Liu, Sun, Baltrunas and Schroeder, Wayfair (ECIR 2022) | [MIT](https://github.com/wayfair/WANDS/blob/main/LICENSE), Copyright (c) 2021 ecir2022; training, development, calibration and held-out test rows |
+
+## Image Setting And Image Test
+
+| Source | Credit | Declared Terms |
+| --- | --- | --- |
+| [SugarCrepe](https://github.com/RAIVNLab/sugar-crepe) `replace_att`, read from the [Mayfull/sugarcrepe_vlms](https://huggingface.co/datasets/Mayfull/sugarcrepe_vlms) mirror | Hsieh, Zhang, Ma, Kembhavi and Krishna (NeurIPS 2023 Datasets and Benchmarks) | [MIT](https://github.com/RAIVNLab/sugar-crepe/blob/main/LICENSE), Copyright (c) 2023 RAIVN Lab; fit and development views set the image residual strength and temperature, held-out views give the image test |
+| [COCO 2017 validation images](https://cocodataset.org/) | COCO Consortium | Annotations [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); images belong to their owners under the [COCO and Flickr terms](https://cocodataset.org/#termsofuse) |
 
 ## Evaluation-Only Datasets
 
@@ -63,8 +72,9 @@ The following sources form Kev `breadth-v1`. Declarations and credits follow
 | [Humicroedit](https://cs.rochester.edu/u/nhossain/humicroedit.html) | Hossain et al. (SemEval 2020) | No license stated; upstream requests paper attribution |
 | [cfcolor](https://www.dgp.toronto.edu/~donovan/cfcolor/) | O'Donovan, Agarwala and Hertzmann (CAe 2014) | Permissive program notice; no separate dataset license stated |
 
-These declarations describe the upstream releases. FuZev converted examples from
-these sources into decision prompts and labels to train and evaluate the head;
-the converted data are not redistributed. Rights in underlying images, text and
-generated responses remain governed by their source terms. Evaluation-only data
-do not supply head-fitting examples.
+These declarations describe the upstream releases. FuZev converted examples
+from the training sources into decision prompts and labels to train and
+calibrate the head, from SugarCrepe to set and test the image setting, and
+from the evaluation-only sources to evaluate the head. The converted data
+are not redistributed. Rights in underlying images, text and generated
+responses remain governed by their source terms.
